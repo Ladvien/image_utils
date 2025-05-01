@@ -1,21 +1,18 @@
-MIT License
+Limited-Use Software License (Small-Entity / No-AI)
 
-Copyright (c) 2025 Thomas Brittain
+Copyright (c) 2025 C. Thomas Brittain
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any individual or to any organization having five (5) or fewer employees (“Small Entity”) obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction – including without limitation the rights to use (for any purpose, including commercial purposes), copy, modify, merge, publish, distribute, and sublicense the Software – **subject to the following conditions**:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. **Eligibility**.  This license grants rights **only** to individuals or Small Entities (≤5 employees).  No person or organization with more than five (5) employees (“Large Entity”) is authorized to use, reproduce, distribute, or create derivative works of the Software, except as provided in Section 3 below.  Any other use by a Large Entity is a breach of this license.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. **Attribution**.  Copies or substantial portions of the Software, and any derivative works, must include this license and a clear notice attributing the original author.  In particular, the above copyright and permission notice and this license must be included in all copies.  A prominent reference to the original author (and project) should appear in documentation or about pages of any distributed derivative works.
+
+3. **Academic and Research Use**.  Notwithstanding the above, **academic, educational, or non-commercial research** use of the Software is permitted for any person or organization (including Large Entities).  Such use must comply with all other terms and include the attribution required by Section 2.  For example, a university, non-profit research lab, or corporate research group may use the Software internally for learning, testing, or publication purposes as long as they credit the original author.
+
+4. **Prohibited AI/ML Uses**.  Under no circumstances shall the Software, its contents, or any output produced by the Software be used to train, improve, or validate any machine learning, artificial intelligence, or statistical model (including large language models, neural networks, or similar).  The Software and any of its data or derivatives **may not** be ingested or included in any dataset for training, fine-tuning, or evaluation of AI/ML models.  Any form of data mining, scraping, extraction, or aggregation of the Software’s code or outputs for use in a machine-learning context is expressly forbidden.
+
+5. **Termination**.  Any use of the Software that violates these terms (for example, use by a Large Entity outside Section 3, or any prohibited AI/ML use) will automatically terminate this license and all rights to use the Software.  The violator must immediately cease all use and may be held liable for damages.
+
+6. **Warranty Disclaimer**.  THE SOFTWARE IS PROVIDED “AS IS” WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.  In no event shall the author or copyright holder be liable for any claim, damages, or other liability arising from use of the Software.
+

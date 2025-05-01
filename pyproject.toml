@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "your_package_name"
+name = "image_utils"
 version = "0.0.1"
 description = "A short description of your package."
 authors = ["C. Thomas Brittain <cthomasbrittain@hotmail.com>"]
@@ -7,9 +7,9 @@ license = "MIT"
 readme = "README.md"
 
 [tool.poetry.urls]
-homepage = "https://github.com/Ladvien/your_package_name"
-repository = "https://github.com/Ladvien/your_package_name"
-documentation = "https://your_package_name.readthedocs.io/en/latest/"
+homepage = "https://github.com/Ladvien/image_utils"
+repository = "https://github.com/Ladvien/image_utils"
+documentation = "https://image_utils.readthedocs.io/en/latest/"
 
 
 [tool.poetry.dependencies]

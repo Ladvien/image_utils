@@ -14,27 +14,6 @@ from image_utils.utils import (
 )
 
 
-@pytest.fixture
-def tmp_image_file():
-    """Create a temporary valid image file."""
-    tmpdir = Path(tempfile.mkdtemp())
-    img_path = tmpdir / "test_image.jpg"
-    img = PILImage.new("RGB", (64, 64), color=(100, 150, 200))
-    img.save(img_path)
-    yield img_path
-    shutil.rmtree(tmpdir)
-
-
-@pytest.fixture
-def tmp_non_image_file():
-    """Create a temporary non-image file."""
-    tmpdir = Path(tempfile.mkdtemp())
-    file_path = tmpdir / "not_an_image.txt"
-    file_path.write_text("This is not an image.")
-    yield file_path
-    shutil.rmtree(tmpdir)
-
-
 def test_is_valid_image_true(tmp_image_file):
     assert ImageChecker.is_valid_image(str(tmp_image_file)) == True
 

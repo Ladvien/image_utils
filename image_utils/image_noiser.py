@@ -60,7 +60,7 @@ class ImageNoiser:
         if samples is None:
             samples = len(image_loader.image_paths)
 
-        image_paths = list(image_loader.iter_image_paths())
+        image_paths = list(image_loader)
         shuffle(image_paths)
 
         for i, image_path in enumerate(image_paths):

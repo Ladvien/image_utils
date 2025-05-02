@@ -8,17 +8,6 @@ import base64
 from image_utils.image_path import ImagePath
 
 
-@pytest.fixture
-def tmp_image_file():
-    """Create a temporary image file."""
-    tmpdir = Path(tempfile.mkdtemp())
-    img_path = tmpdir / "test_image.jpg"
-    img = PILImage.new("RGB", (100, 100), color=(123, 222, 111))
-    img.save(img_path)
-    yield img_path
-    shutil.rmtree(tmpdir)
-
-
 def test_imagepath_creation(tmp_image_file):
     img_path = ImagePath(path=str(tmp_image_file))
     assert img_path.path == str(tmp_image_file)
@@ -35,7 +24,7 @@ def test_load_image(tmp_image_file):
     img_path = ImagePath(path=str(tmp_image_file))
     image = img_path.load()
     assert isinstance(image, PILImage.Image)
-    assert image.size == (100, 100)
+    assert image.size == (64, 64)
 
 
 def test_load_as_base64(tmp_image_file):
@@ -57,14 +46,14 @@ def test_save(tmp_image_file):
 
     # Confirm saved image is valid
     reloaded = PILImage.open(save_path)
-    assert reloaded.size == (100, 100)
+    assert reloaded.size == (64, 64)
 
     shutil.rmtree(tmpdir)
 
 
 def test_is_valid_image(tmp_image_file):
     img_path = ImagePath(path=str(tmp_image_file))
-    assert img_path.is_valid_image() == True
+    assert img_path.is_valid_image()
 
 
 def test_missing_file_raises():

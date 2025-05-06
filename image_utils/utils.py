@@ -1,3 +1,5 @@
+import base64
+from io import BytesIO
 from PIL import Image as PILImage
 import torch
 import os
@@ -46,3 +48,11 @@ def preprocess_image(image: PILImage.Image) -> torch.Tensor:
     if torch.cuda.is_available():
         normalized_tensor = normalized_tensor.cuda()
     return normalized_tensor
+
+
+def load_image_as_base64(image: PILImage.Image) -> str:
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    img_str = base64.b64encode(buffered.getvalue())
+
+    return img_str.decode("utf-8")

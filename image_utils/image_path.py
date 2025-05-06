@@ -5,7 +5,7 @@ import os
 import base64
 from io import BytesIO
 
-from .utils import ImageChecker
+from .utils import ImageChecker, load_image_as_base64
 
 
 @dataclass
@@ -25,12 +25,8 @@ class ImagePath:
         return image
 
     def load_as_base64(self) -> str:
-        buffered = BytesIO()
         image = self.load()
-        image.save(buffered, format="JPEG")
-        img_str = base64.b64encode(buffered.getvalue())
-
-        return img_str.decode("utf-8")
+        return load_image_as_base64(image)
 
     def save(self, path: str) -> None:
         if not os.path.exists(os.path.dirname(path)):
@@ -43,10 +39,5 @@ class ImagePath:
         return ImageChecker.is_valid_image(self.path)
 
     def __post_init__(self):
-        if not os.path.exists(self.path):
-            raise FileNotFoundError(f"Image not found at path: {self.path}")
-        if not os.path.isfile(self.path):
-            raise ValueError(f"Path is not a file: {self.path}")
-
         if not self.name:
             self.name = os.path.basename(self.path)

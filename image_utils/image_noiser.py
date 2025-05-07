@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Callable  # Needed for type hinting
 from PIL import Image as PILImage
+from PIL import ImageFilter
 from random import choice, shuffle, uniform
 import numpy as np
 from uuid import uuid4
@@ -17,7 +18,7 @@ class ImageNoiser:
     corruptions = [
         # I just eyeballed these to see which ones looked good
         "gaussian_noise",
-        # "gaussian_blur",
+        "gaussian_blur",
         "jpeg_compression",
         # "contrast",
         # "elastic_transform",
@@ -77,8 +78,6 @@ class ImageNoiser:
             path = f"{output_folder}/{unique_id}_{image_path.name}_noisy.jpg"
             noisy_image.save(path, quality=95)
 
-            print(f"Saved noisy image: {path}")
-
     @classmethod
     def with_noise(cls, image: PILImage.Image, severity: float = 0.2) -> PILImage.Image:
         image_to_corrupt = image.copy()
@@ -89,18 +88,19 @@ class ImageNoiser:
 
     @classmethod
     def add_gaussian_noise(
-        cls, image: PILImage.Image, severity: float = 0.2
+        cls, image: PILImage.Image, severity: float
     ) -> PILImage.Image:
-        image_array = np.array(np.array(image)) / 255.0
-        image_array = np.clip(
-            image_array, np.random.normal(size=image_array.shape, scale=severity), 1.0
-        )
-
-        return PILImage.fromarray((image_array * 255).astype(np.uint8))
+        print(severity)
+        sigma = map_value(severity, 0, 1, 0, 0.3)
+        image_array = np.array(image).astype(np.float32) / 255.0
+        noise = np.random.normal(0, sigma, image_array.shape)
+        noisy_image = image_array + noise
+        noisy_image = np.clip(noisy_image, 0, 1)
+        return PILImage.fromarray((noisy_image * 255).astype(np.uint8))
 
     @classmethod
     def add_jpeg_compression(
-        cls, image: PILImage.Image, severity: float = 0.9
+        cls, image: PILImage.Image, severity: float
     ) -> PILImage.Image:
         quality = int(map_value(severity, 1, 0, 0, 100))
         buffer = BytesIO()
@@ -108,3 +108,13 @@ class ImageNoiser:
         buffer.seek(0)
 
         return PILImage.open(buffer)
+
+    @classmethod
+    def add_gaussian_blur(
+        cls, image: PILImage.Image, severity: float
+    ) -> PILImage.Image:
+
+        # Map severity to a blur radius (adjust max to taste)
+        radius = map_value(severity, 0, 1, 0, 10)
+        blurred = image.filter(ImageFilter.GaussianBlur(radius=radius))
+        return blurred

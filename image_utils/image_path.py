@@ -20,7 +20,6 @@ class ImagePath:
     def load(self, show_on_load: bool = False) -> PILImage.Image:
         image = PILImage.open(self.path).convert("RGB")
         if show_on_load:
-            print(f"Loading image from path: {self.path}")
             image.show()
         return image
 

@@ -26,3 +26,6 @@ class NosingOperation:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+    def __repr__(self) -> str:
+        return f"NosingOperation(name={self.name}, severity={self.severity})"

@@ -14,22 +14,26 @@ class LabelWriter:
     def __init__(
         self,
         path: str,
-        columns: list[str],
+        columns: list[str] = None,
         image_path_column_name: str = "original_image_path",
         overwrite: bool = False,
         max_operations: int = 10,
     ):
         self.path = Path(path)
         self.max_operations = max_operations
-        columns = ["original_image_path"]
+
+        # --- Define columns ---
+        columns = ["original_image_path", "label"]  # Add label column first
         for i in range(1, self.max_operations + 1):
             columns.append(f"fn_{i}")
             columns.append(f"fn_{i}_threshold")
 
         self.columns = columns
         self.image_path_column_name = image_path_column_name
+
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
+        # --- Initialize CSV ---
         if not self.path.exists() or overwrite:
             self.df = pd.DataFrame(columns=self.columns)
             self.df.to_csv(self.path, index=False)
@@ -37,11 +41,14 @@ class LabelWriter:
             print(f"Loading existing label CSV: {self.path}")
             self.df = pd.read_csv(self.path)
 
+        # Make sure the loaded CSV has the right columns
         assert list(self.df.columns) == self.columns
 
-    def record(self, noisy_image_maker: NoisyImageMaker) -> None:
+    def record(self, noisy_image_maker: NoisyImageMaker, label: str) -> None:
+        # --- Prepare a new row ---
         new_row = {col: None for col in self.columns}
         new_row["original_image_path"] = noisy_image_maker.image_path.path
+        new_row["label"] = label
 
         for idx, op in enumerate(noisy_image_maker.noise_operations):
             fn_col = f"fn_{idx + 1}"
@@ -49,6 +56,7 @@ class LabelWriter:
             new_row[fn_col] = op.name
             new_row[threshold_col] = op.severity or 0
 
+        # --- Append row ---
         self.df.loc[len(self.df)] = new_row
         self.df.to_csv(self.path, index=False)
 
@@ -69,14 +77,13 @@ class LabelManager:
         self.label_writer = LabelWriter(
             config.label_csv_path, config.overwrite_label_csv
         )
-        self.labeled_image_paths = self.label_writer.get_labels()
         self.total_samples = config.image_samples or len(self.image_loader)
 
     def new_noisy_image_maker(self) -> NoisyImageMaker | None:
         try:
             while True:
                 image_path = next(self.image_loader)
-                if str(image_path.path) not in self.labeled_image_paths:
+                if str(image_path.path) not in self.label_writer.get_labels():
                     noise_operations = [
                         NosingOperation.from_str(fn_name, default_threshold)
                         for fn_name, default_threshold in self.config.noise_fns_and_defaults()
@@ -91,10 +98,10 @@ class LabelManager:
             return None
 
     def unlabeled_count(self) -> int:
-        return self.total_samples - len(self.labeled_image_paths)
+        return self.total_samples - self.labeled_count()
 
     def labeled_count(self) -> int:
-        return len(self.labeled_image_paths)
+        return len(self.label_writer.df)
 
     def percentage_complete(self) -> float:
         if self.total_samples == 0:
@@ -151,6 +158,5 @@ class LabelManager:
         df = df.drop(rows_to_delete)
         df.to_csv(self.label_writer.path, index=False)
         self.label_writer.df = df
-        self.labeled_image_paths = df["original_image_path"].tolist()
         print(f"Removed last {safe_num_to_remove} labeled images.")
         return True

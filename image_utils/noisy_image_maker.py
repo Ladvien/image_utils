@@ -1,19 +1,22 @@
 from functools import cached_property
-from typing import Callable, Optional
+from pathlib import Path
+from typing import Callable, List, Optional, Tuple
 from PIL import Image as PILImage
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import os
+from random import shuffle
 
 from image_utils.image_noiser import ImageNoiser
 from image_utils.image_path import ImagePath
 from image_utils.noising_operation import NosingOperation
 from image_utils.utils import load_image_as_base64
+from labeling.label_manager_config import LabelManagerConfig
 
 
 @dataclass
 class NoisyImageMaker:
     """
-    Generates noisy versions of an image based on a JPEG compression threshold.
+    Generates noisy versions of an image with configurable noise operations.
 
     Lazy-loaded properties:
     - `noisy_image`: Created when first accessed.
@@ -35,7 +38,7 @@ class NoisyImageMaker:
     ) -> "NoisyImageMaker":
         noise_functions = [getattr(ImageNoiser, name) for name in noise_fns]
         if len(thresholds) != len(noise_functions):
-            raise ValueError("Thresholds and noise functions must have the same length")
+            raise ValueError("Thresholds and noise functions must match in length")
 
         noise_operations = [
             NosingOperation(fn, threshold)
@@ -47,6 +50,43 @@ class NoisyImageMaker:
             ImagePath(output_path),
             noise_operations,
         )
+
+    @classmethod
+    def from_config_shuffled(
+        cls,
+        image_path: ImagePath,
+        output_path: Path,
+        noise_and_defaults: List[Tuple[str, float]],
+    ) -> "NoisyImageMaker":
+        """
+        Create a NoisyImageMaker using shuffled noise operation order from config.
+        """
+
+        order = list(range(len(noise_and_defaults)))
+        shuffle(order)
+
+        noise_operations = [
+            NosingOperation.from_str(
+                noise_and_defaults[i][0], noise_and_defaults[i][1], i
+            )
+            for i in order
+        ]
+
+        return cls(
+            image_path=image_path,
+            output_path=output_path,
+            noise_operations=noise_operations,
+        )
+
+    def update_severity(self, fn_name: str, severity: float):
+        """
+        Update the severity of a specific noise function.
+        """
+        for op in self.noise_operations:
+            if op.fn.__name__ == fn_name:
+                op.severity = severity
+                return
+        raise ValueError(f"Noise function '{fn_name}' not found.")
 
     def noisy_image(self) -> PILImage.Image:
         image = self.image_path.load()
@@ -68,10 +108,9 @@ class NoisyImageMaker:
     def __post_init__(self):
         if self.name is None:
             self.name = os.path.basename(self.image_path.path)
-
         self.validate()
 
     def validate(self) -> bool:
-        """Check if the image is valid."""
         if not isinstance(self.image_path, ImagePath):
             raise TypeError("image_path must be an instance of ImagePath")
+        return True

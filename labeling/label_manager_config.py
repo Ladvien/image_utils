@@ -50,7 +50,7 @@ class LabelManagerConfig:
 
     def __post_init__(self):
         if self.label_csv_path is None:
-            self.label_csv_path = os.path.join(self.output_dir, "labels.csv")
+            self.label_csv_path = os.path.join(self.output_dir, "seeds.csv")
 
         if isinstance(self.images_dir, str):
             self.images_dir = Path(self.images_dir)

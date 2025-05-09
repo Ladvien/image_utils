@@ -104,6 +104,9 @@ class ImageNoiser:
     ) -> PILImage.Image:
         quality = int(map_value(severity, 1, 0, 0, 100))
         buffer = BytesIO()
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
         image.save(buffer, format="JPEG", quality=quality)
         buffer.seek(0)
 

@@ -49,6 +49,8 @@ class LabelWriter:
             row[f"fn_{i}_threshold"] = op.severity
             row[f"fn_{i}_order"] = op.order if hasattr(op, "order") else i
 
+        print(f"Recording label: {row}")
+        print(self.path)
         self.df.loc[len(self.df)] = row
         self.df.to_csv(self.path, index=False)
 

@@ -15,7 +15,7 @@ class ImageChecker:
         except FileNotFoundError:
             print(f"File {path} not found. Maybe uppercase characters? Skipping...")
         except PILImage.UnidentifiedImageError as e:
-            print(f"File {path} is not an image file. Skipping...")
+            print("🛑 Invalid image, skipping:")
             print(e)
 
         return False
@@ -27,7 +27,7 @@ class ImageChecker:
             image.verify()
             return True
         except (IOError, PILImage.UnidentifiedImageError):
-            print(f"File {path} cannot be re-encoded. Skipping...")
+            print(f"⚠️ File {path} cannot be re-encoded. Skipping...")
             return False
 
     @staticmethod

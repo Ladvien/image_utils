@@ -1,0 +1,132 @@
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable, List, Dict, Optional
+from uuid import uuid4
+from PIL import Image as PILImage
+from image_utils.image_noiser import ImageNoiser
+import pandas as pd
+import random
+from sklearn.model_selection import train_test_split
+
+from image_utils.image_loader import ImageLoader  # Your lazy recursive loader
+
+
+@dataclass
+class Config:
+    source_dir: Path
+    output_dir: Path
+    image_transform_fn: Callable[[PILImage.Image, Path], PILImage.Image]
+    test_size: float = 0.2
+    output_csv_name: str = "noisy_labels.csv"
+    train_subdir: str = "train"
+    test_subdir: str = "test"
+    image_extensions: List[str] = field(
+        default_factory=lambda: [".jpg", ".jpeg", ".png"]
+    )
+    shuffle: bool = True
+
+    def train_dir(self) -> Path:
+        return self.output_dir / self.train_subdir
+
+    def test_dir(self) -> Path:
+        return self.output_dir / self.test_subdir
+
+    def output_csv_path(self) -> Path:
+        return self.output_dir / self.output_csv_name
+
+
+class ImageTransformationPipeline:
+    def __init__(self, config: Config):
+        self.config = config
+        self.image_loader = ImageLoader(
+            str(config.source_dir),
+            extensions=config.image_extensions,
+            shuffle=config.shuffle,
+        )
+        print(f"✅ Loaded {len(self.image_loader)} images from {config.source_dir}")
+
+        self.records: List[Dict] = []
+        self._setup_output_dirs()
+
+    def _setup_output_dirs(self):
+        self.config.train_dir().mkdir(parents=True, exist_ok=True)
+        self.config.test_dir().mkdir(parents=True, exist_ok=True)
+        print(
+            f"✅ Output dirs created:\n- {self.config.train_dir()}\n- {self.config.test_dir()}"
+        )
+
+    def run(self):
+        assert len(self.image_loader) > 0, "No images found."
+
+        image_paths = [p.path for p in self.image_loader]
+        self.image_loader.reset()
+
+        train_paths, test_paths = train_test_split(
+            image_paths, test_size=self.config.test_size, random_state=42
+        )
+        split_lookup = {str(p): "train" for p in train_paths} | {
+            str(p): "test" for p in test_paths
+        }
+
+        for img_path_obj in self.image_loader:
+            img_path = img_path_obj.path
+            try:
+                image = img_path_obj.load()
+            except Exception as e:
+                print(f"❌ Skipping {img_path} due to error: {e}")
+                continue
+
+            group = split_lookup.get(str(img_path), None)
+            if group not in ("train", "test"):
+                print(f"❓ Image not in split map: {img_path}")
+                continue
+
+            dest_dir = (
+                self.config.train_dir() if group == "train" else self.config.test_dir()
+            )
+            output_filename = f"{uuid4()}_{Path(img_path).stem}_noisy.jpg"
+            output_path = dest_dir / output_filename
+
+            if output_path.exists():
+                print(f"⚠️  Already exists: {output_path}")
+                continue
+
+            transformed = self.config.image_transform_fn(image, Path(img_path))
+            transformed.save(output_path, quality=95)
+            print(f"✅ Saved: {group}/{output_filename}")
+
+            self.records.append(
+                {
+                    "original_image_path": str(img_path),
+                    "noisy_image_path": str(output_path),
+                    "split": group,
+                }
+            )
+
+        self._write_csv()
+
+    def _write_csv(self):
+        df = pd.DataFrame(self.records)
+        df.to_csv(self.config.output_csv_path(), index=False)
+        print(f"📝 Saved labels to {self.config.output_csv_path()}")
+
+
+# Example usage
+def dummy_noise_fn(image: PILImage.Image, _: Path) -> PILImage.Image:
+    return image.transpose(PILImage.FLIP_LEFT_RIGHT)  # Example transform
+
+
+if __name__ == "__main__":
+
+    maker = ImageNoiser()
+
+    config = Config(
+        source_dir=Path(
+            "/Volumes/Shared/external_ssd/datasets/laion_aesthetics/-1/10/"
+        ),
+        output_dir=Path("./training_data/output_noisy_dataset"),
+        # WILO: Make `add_all_noises` a callable that takes an image and a path
+        image_transform_fn=maker.add_all_noises,
+    )
+    pipeline = ImageTransformationPipeline(config)
+    pipeline.run()

@@ -1,4 +1,5 @@
 from glob import glob
+from io import BytesIO
 from pathlib import Path
 from typing import Iterable, List, Optional
 from PIL import Image as PILImage, ImageFile
@@ -80,7 +81,10 @@ class ImageLoader:
     def paths_with_image_extension(self, raw_image_paths: List[Path]) -> List[Path]:
         """Filter paths to include only those with valid image extensions."""
         image_paths = [
-            path for path in raw_image_paths if path.suffix.lower() in self.extensions
+            path
+            for path in raw_image_paths
+            if path.suffix.lower() in self.extensions
+            and not path.name.startswith("._")  # Skip macOS metadata files
         ]
 
         if not image_paths:
@@ -111,14 +115,16 @@ class ImageLoader:
         """Attempt to re-encode an image file."""
         try:
             with PILImage.open(path) as img:
-                img = img.convert("RGB")
-                temp_path = path + ".tmp.jpg"
-                img.save(temp_path, format="JPEG")
-                os.replace(temp_path, path)
+                buffer = BytesIO()
+                img.save(buffer, format="JPEG", quality=100)
+                buffer.seek(0)
+                new_image = PILImage.open(buffer)
+                new_image.save(path, format="JPEG", quality=100)
+
                 print(f"Re-encoded: {path}")
                 return True
         except Exception as e:
-            print(f"[Failed to re-encode] {path} — {e}")
+            print(f"Failed to re-encode {path}: {e}")
             return False
 
     def _setup(self, input_folder: str):
@@ -128,7 +134,6 @@ class ImageLoader:
 
         self.image_paths = []
         for path in potential_image_paths:
-
             if path.is_valid_image():
                 self.image_paths.append(path)
 

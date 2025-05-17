@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from typing import Callable, List, Dict, Optional
 from uuid import uuid4
@@ -91,8 +92,11 @@ class ImageTransformationPipeline:
                 print(f"⚠️  Already exists: {output_path}")
                 continue
 
-            transformed = self.config.image_transform_fn(image, Path(img_path))
-            transformed.save(output_path, quality=95)
+            transformed_image, noise_weights = self.config.image_transform_fn(image)
+
+            print(noise_weights)
+
+            transformed_image.save(output_path, quality=100)
             print(f"✅ Saved: {group}/{output_filename}")
 
             self.records.append(
@@ -101,6 +105,7 @@ class ImageTransformationPipeline:
                     "noisy_image_path": str(output_path),
                     "split": group,
                 }
+                | {name: str(weight) for name, weight in noise_weights.items()}
             )
 
         self._write_csv()
@@ -120,13 +125,15 @@ if __name__ == "__main__":
 
     maker = ImageNoiser()
 
+    add_noises_partial = partial(maker.add_all_noises, severity=1.2, num_noise_fns=3)
+
     config = Config(
         source_dir=Path(
             "/Volumes/Shared/external_ssd/datasets/laion_aesthetics/-1/10/"
         ),
         output_dir=Path("./training_data/output_noisy_dataset"),
         # WILO: Make `add_all_noises` a callable that takes an image and a path
-        image_transform_fn=maker.add_all_noises,
+        image_transform_fn=add_noises_partial,
     )
     pipeline = ImageTransformationPipeline(config)
     pipeline.run()

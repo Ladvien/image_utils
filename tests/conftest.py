@@ -54,3 +54,43 @@ def tmp_image_file():
     img.save(img_path)
     yield img_path
     shutil.rmtree(tmpdir)
+
+
+@pytest.fixture
+def sample_src(tmp_path):
+    """
+    Create a small nested directory of two dummy JPG images:
+      src/a/a.jpg
+      src/b/b.jpg
+    """
+    base = tmp_path / "src"
+    for folder, color in [("a", (255, 0, 0)), ("b", (0, 255, 0))]:
+        d = base / folder
+        d.mkdir(parents=True)
+        img = PILImage.new("RGB", (8, 8), color=color)
+        img.save(d / f"{folder}.jpg")
+    return base
+
+
+@pytest.fixture
+def dummy_noise_fn():
+    """
+    A stand-in transform that simply flips the image and returns a fixed
+    weight dict, matching the pipeline's expectation of a (img, weights) tuple.
+    """
+
+    def fn(image):
+        flipped = image.transpose(PILImage.FLIP_LEFT_RIGHT)
+        return flipped, {"dummy_noise": 1.0}
+
+    return fn
+
+
+@pytest.fixture
+def tmp_single_image(tmp_path):
+    """A single valid PNG for re-encode tests."""
+    d = tmp_path / "single"
+    d.mkdir()
+    p = d / "one.png"
+    PILImage.new("RGB", (5, 5), color=(1, 2, 3)).save(p)
+    return p

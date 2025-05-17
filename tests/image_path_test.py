@@ -58,10 +58,10 @@ def test_is_valid_image(tmp_image_file):
 
 def test_missing_file_raises():
     with pytest.raises(FileNotFoundError):
-        ImagePath(path="non_existent_file.jpg")
+        ImagePath.from_path("non_existent_file.jpg")
 
 
 def test_directory_path_raises(tmp_image_file):
     directory = tmp_image_file.parent
-    with pytest.raises(ValueError):
-        ImagePath(path=str(directory))
+    with pytest.raises(IsADirectoryError):
+        ImagePath.from_path(path=str(directory))

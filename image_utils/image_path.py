@@ -17,6 +17,10 @@ class ImagePath:
 
     @classmethod
     def from_path(cls, path: str) -> ImagePath:
+        if os.path.isdir(path):
+            raise IsADirectoryError(f"Path {path} is a directory.")
+        if not ImageChecker.is_valid_image(path):
+            raise FileNotFoundError(f"Image {path} is not valid.")
         return cls(path=path, name=os.path.basename(path))
 
     def load(self, show_on_load: bool = False) -> PILImage.Image:

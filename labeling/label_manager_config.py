@@ -24,6 +24,11 @@ class LabelManagerConfig:
             ImageNoiser.add_jpeg_compression,
             ImageNoiser.add_gaussian_noise,
             ImageNoiser.add_gaussian_blur,
+            ImageNoiser.add_brightness,
+            ImageNoiser.add_pixelate,
+            ImageNoiser.add_high_contrast,
+            ImageNoiser.add_low_contrast,
+            ImageNoiser.add_saturation,
         ]
     )
     severity_defaults: dict[str, float] = field(

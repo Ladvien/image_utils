@@ -1,10 +1,13 @@
 from glob import glob
 from pathlib import Path
 from typing import Iterable, List, Optional
-from PIL import Image as PILImage
+from PIL import Image as PILImage, ImageFile
 import random
+import os
 
 from .image_path import ImagePath
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class ImageLoader:
@@ -21,7 +24,7 @@ class ImageLoader:
         else:
             self.extensions = [".jpg", ".jpeg", ".png"]
 
-        self.__setup(input_folder)
+        self._setup(input_folder)
 
     def __iter__(self):
         """Return self as an iterator."""
@@ -29,11 +32,10 @@ class ImageLoader:
 
     def __next__(self) -> ImagePath:
         """Return the next ImagePath."""
-        if self._index >= len(self.image_paths):
+        if self.image_paths:
+            return self.image_paths.pop(0)
+        else:
             raise StopIteration
-        result = self.image_paths[self._index]
-        self._index += 1
-        return result
 
     def __getitem__(self, index: int) -> ImagePath:
         """Allow index access to ImagePath objects."""
@@ -73,9 +75,10 @@ class ImageLoader:
 
     def reset(self):
         """Reset the iterator to the beginning."""
-        self.__setup(self.input_folder)
+        self._setup(self.input_folder)
 
     def paths_with_image_extension(self, raw_image_paths: List[Path]) -> List[Path]:
+        """Filter paths to include only those with valid image extensions."""
         image_paths = [
             path for path in raw_image_paths if path.suffix.lower() in self.extensions
         ]
@@ -88,6 +91,7 @@ class ImageLoader:
         return image_paths
 
     def discover_image_paths(self, input_folder: str) -> List[Path]:
+        """Discover all image paths in the input folder."""
         raw_image_paths = list(Path(input_folder).rglob("*", case_sensitive=False))
         if not raw_image_paths:
             raise Exception(f"No files found in '{self.input_folder}'.")
@@ -103,11 +107,31 @@ class ImageLoader:
         else:
             image_paths.sort()
 
-    def __setup(self, input_folder: str):
+    def attempt_reencode(self, path: str) -> bool:
+        """Attempt to re-encode an image file."""
+        try:
+            with PILImage.open(path) as img:
+                img = img.convert("RGB")
+                temp_path = path + ".tmp.jpg"
+                img.save(temp_path, format="JPEG")
+                os.replace(temp_path, path)
+                print(f"Re-encoded: {path}")
+                return True
+        except Exception as e:
+            print(f"[Failed to re-encode] {path} — {e}")
+            return False
+
+    def _setup(self, input_folder: str):
         filtered_image_paths = self.discover_image_paths(input_folder)
         self.shuffle_image_paths(filtered_image_paths)
-        potential_image_paths = [ImagePath(path) for path in filtered_image_paths]
-        self.image_paths = [
-            path for path in potential_image_paths if path.is_valid_image()
-        ]
-        self._index = 0
+        potential_image_paths = [ImagePath(str(path)) for path in filtered_image_paths]
+
+        self.image_paths = []
+        for path in potential_image_paths:
+
+            if path.is_valid_image():
+                self.image_paths.append(path)
+
+            elif self.attempt_reencode(path.path):
+                if ImagePath(path.path).is_valid_image():
+                    self.image_paths.append(ImagePath(path.path))

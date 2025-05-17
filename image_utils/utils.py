@@ -2,26 +2,7 @@ import base64
 from io import BytesIO
 from PIL import Image as PILImage
 import torch
-import os
 import torchvision.transforms.functional as tf
-
-
-class ImageChecker:
-
-    @staticmethod
-    def is_valid_image(path: str) -> bool:
-        if os.path.isdir(path):
-            return False
-
-        try:
-            PILImage.open(path)
-            return True
-        except FileNotFoundError:
-            print(f"File {path} not found. Maybe uppercase characters? Skipping...")
-        except PILImage.UnidentifiedImageError:
-            print(f"File {path} is not an image file. Skipping...")
-
-        return False
 
 
 def map_value(

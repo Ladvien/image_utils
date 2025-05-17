@@ -5,7 +5,9 @@ import os
 import base64
 from io import BytesIO
 
-from .utils import ImageChecker, load_image_as_base64
+from image_utils.image_checker import ImageChecker
+
+from .utils import load_image_as_base64
 
 
 @dataclass

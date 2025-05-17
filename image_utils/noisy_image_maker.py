@@ -35,13 +35,14 @@ class NoisyImageMaker:
         output_path: str,
         thresholds: list[float],
         noise_fns: list[str],
+        order: int = 1,
     ) -> "NoisyImageMaker":
         noise_functions = [getattr(ImageNoiser, name) for name in noise_fns]
         if len(thresholds) != len(noise_functions):
             raise ValueError("Thresholds and noise functions must match in length")
 
         noise_operations = [
-            NosingOperation(fn, threshold)
+            NosingOperation(fn, threshold, order)
             for fn, threshold in zip(noise_functions, thresholds)
         ]
 

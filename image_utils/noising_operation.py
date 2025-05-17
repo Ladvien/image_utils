@@ -7,16 +7,10 @@ from image_utils.image_noiser import ImageNoiser
 
 @dataclass
 class NosingOperation:
-    def __init__(
-        self,
-        fn: Callable[[PILImage.Image, float], PILImage.Image],
-        severity: float,
-        order: int,
-    ):
-        self.name = fn.__name__
-        self.fn = fn
-        self.severity = severity
-        self.order = order
+    fn: Callable[[PILImage.Image, float], PILImage.Image]
+    severity: float
+    order: int
+    name: str | None = None
 
     @classmethod
     def from_str(cls, name: str, severity: float, order: int) -> "NosingOperation":
@@ -31,3 +25,11 @@ class NosingOperation:
 
     def __repr__(self) -> str:
         return f"NosingOperation(name={self.name}, severity={self.severity}, order={self.order})"
+
+    def __post_init__(self):
+        if self.name is None:
+            self.name = self.fn.__name__
+        if not callable(self.fn):
+            raise ValueError(f"Function {self.fn} is not callable.")
+        if not isinstance(self.severity, float):
+            raise ValueError(f"Severity {self.severity} is not a float.")

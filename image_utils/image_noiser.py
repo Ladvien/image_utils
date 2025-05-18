@@ -145,61 +145,62 @@ class ImageNoiser:
     def add_all_noises(
         cls,
         image: PILImage.Image,
-        severity: float,
+        severity_budget: float,
         num_noise_fns: int | None = None,
     ) -> Tuple[PILImage.Image, Dict[str, float]]:
-        """
-        Blend multiple noise types into one image, with no leftover original.
+        # 1. pick & cap how many fns we’ll use
+        noise_fns = cls._select_noise_functions(num_noise_fns)
 
-        Args:
-            image:         original PIL image
-            severity:      total noise budget (0.0 = none, max = number of fns)
-            num_noise_fns: how many distinct noises to mix (defaults to all)
-
-        Returns:
-            (blended_image, {fn_name: weight, …})
-
-        Raises:
-            ValueError: if severity > num_noise_fns
-        """
-        # 1. pick noise functions
-        noise_fns = ImageNoiser.get_noise_functions()
-        n = (
-            len(noise_fns)
-            if num_noise_fns is None
-            else min(num_noise_fns, len(noise_fns))
-        )
-
-        if severity < 0:
-            raise ValueError(f"Severity must be >= 0, got {severity}")
-        if severity > n:
+        # 2. validate budget
+        if not (0 <= severity_budget <= len(noise_fns)):
             raise ValueError(
-                f"Severity {severity:.3f} exceeds max total {n} " f"(one per noise fn)."
+                f"Severity {severity_budget!r} must be in [0, {len(noise_fns)}]"
             )
 
-        chosen = sample(noise_fns, n)
+        # 3. compute weights summing to budget
+        weights = cls._compute_weights(len(noise_fns), severity_budget)
 
-        # 2. randomly split the total severity across them
-        raw = [random() for _ in range(n)]
-        total_raw = sum(raw)
-        weights = [r / total_raw * severity for r in raw]
+        # 4. blend and return
+        return cls._blend_noise(image, noise_fns, weights)
 
-        # 3. accumulate only noise contributions
+    @classmethod
+    def _select_noise_functions(
+        cls, num_noise_fns: int | None
+    ) -> list[Callable[[PILImage.Image, float], PILImage.Image]]:
+        all_fns = cls.get_noise_functions()
+        n = len(all_fns) if num_noise_fns is None else min(num_noise_fns, len(all_fns))
+        return sample(all_fns, n)
+
+    @staticmethod
+    def _compute_weights(n: int, budget: float) -> list[float]:
+        """Split `budget` randomly into n non-negative pieces that sum to budget."""
+        raws = [random() for _ in range(n)]
+        total = sum(raws)
+        return [(r / total) * budget for r in raws]
+
+    @staticmethod
+    def _blend_noise(
+        image: PILImage.Image,
+        funcs: list[Callable[[PILImage.Image, float], PILImage.Image]],
+        weights: list[float],
+    ) -> Tuple[PILImage.Image, Dict[str, float]]:
+        """
+        Given an original image, a list of single-noise functions and
+        their corresponding weights, return the blended image + the map
+        of fn_name → weight.
+        """
         orig_arr = np.array(image).astype(np.float32)
-        result = np.zeros_like(orig_arr)  # start at zero (no original)
+        # start from zero so there's no residual original
+        accum = np.zeros_like(orig_arr)
 
         applied: Dict[str, float] = {}
-        for fn, w in zip(chosen, weights):
-            # get the maximal corruption (severity=1.0)
-            full_img = fn(image.copy(), 1.0)
-            full_arr = np.array(full_img).astype(np.float32)
-            result += full_arr * w
+        for fn, w in zip(funcs, weights):
+            full = fn(image.copy(), 1.0)
+            arr = np.array(full).astype(np.float32)
+            accum += arr * w
             applied[fn.__name__] = w
 
-        # 4. finalize blend and return
-        result = np.clip(result, 0, 255).astype(np.uint8)
-        blended = PILImage.fromarray(result)
-
+        blended = PILImage.fromarray(np.clip(accum, 0, 255).astype(np.uint8))
         return blended, applied
 
     @classmethod

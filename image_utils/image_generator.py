@@ -119,11 +119,6 @@ class ImageTransformationPipeline:
         print(f"📝 Saved labels to {self.config.output_csv_path()}")
 
 
-# Example usage
-def dummy_noise_fn(image: PILImage.Image, _: Path) -> PILImage.Image:
-    return image.transpose(PILImage.FLIP_LEFT_RIGHT)  # Example transform
-
-
 if __name__ == "__main__":
 
     maker = ImageNoiser()

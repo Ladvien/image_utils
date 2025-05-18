@@ -1,8 +1,14 @@
+from pathlib import Path
 import pytest
 import numpy as np
 from PIL import Image as PILImage
 
 from image_utils.image_noiser import ImageNoiser
+
+
+# Example usage
+def dummy_noise_fn(image: PILImage.Image, _: Path) -> PILImage.Image:
+    return image.transpose(PILImage.FLIP_LEFT_RIGHT)  # Example transform
 
 
 @pytest.fixture

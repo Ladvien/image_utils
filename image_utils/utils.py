@@ -4,6 +4,7 @@ from pathlib import Path
 from PIL import Image as PILImage
 import torch
 import torchvision.transforms.functional as tf
+from typing import Union, List
 
 
 def map_value(
@@ -40,14 +41,22 @@ def load_image_as_base64(image: PILImage.Image) -> str:
     return img_str.decode("utf-8")
 
 
-def coerce_to_paths(input_folder: str | Path | list[str] | list[Path]) -> list[Path]:
-    if isinstance(input_folder, str):
-        input_folder = Path(input_folder)
-    elif isinstance(input_folder, Path):
-        input_folder = [input_folder]
-    elif isinstance(input_folder, list):
-        input_folder = [Path(folder) for folder in input_folder]
-    else:
-        raise ValueError("Input folder must be a string or a Path object.")
+def coerce_to_paths(val: Union[str, Path, List[str], List[Path]]) -> List[Path]:
 
-    return input_folder
+    if isinstance(val, Path):
+        return [val]
+    if isinstance(val, str):
+        return [Path(val)]
+    elif isinstance(val, list):
+        result = []
+        for item in val:
+            if isinstance(item, str):
+                result.append(Path(item))
+            elif isinstance(item, Path):
+                result.append(item)
+            else:
+                raise TypeError(f"Cannot convert to path: {item}")
+
+        return result
+
+    raise TypeError(f"Cannot convert to paths: {val}")

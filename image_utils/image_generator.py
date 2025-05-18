@@ -57,7 +57,7 @@ class ImageTransformationPipeline:
     def __init__(self, config: Config):
         self.config = config
         self.image_loader = ImageLoader(
-            str(config.source_dir),
+            coerce_to_paths(config.source_dir),
             extensions=config.image_extensions,
             shuffle=config.shuffle,
         )

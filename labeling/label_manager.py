@@ -74,8 +74,9 @@ class LabelManager:
 
     def new_noisy_image_maker(self) -> NoisyImageMaker | None:
         try:
+            image_iter = iter(self.image_loader)  # wrap in iterator
             while True:
-                image_path = next(self.image_loader)
+                image_path = next(image_iter)
                 if str(image_path.path) not in self.label_writer.get_labels():
                     noise_fn_defaults = self.config.noise_fns_and_defaults()
                     order = list(range(len(noise_fn_defaults)))

@@ -46,7 +46,7 @@ class ImageNoiser:
             noise_functions = cls.get_noise_functions()
 
         if samples is None:
-            samples = len(image_loader.image_paths)
+            samples = len(image_loader.get_image_paths)
 
         image_paths = list(image_loader)
         shuffle(image_paths)

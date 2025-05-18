@@ -1,43 +1,18 @@
 from __future__ import annotations
-from typing import Callable  # Needed for type hinting
+import os
+from typing import Callable, Sequence, Tuple, Dict
 from PIL import Image as PILImage
 from PIL import ImageFilter, ImageEnhance
-from random import choice, shuffle, uniform
+from random import choice, shuffle, uniform, sample, random
 import numpy as np
 from uuid import uuid4
 from io import BytesIO
-from random import sample, random
-from typing import Tuple, Dict
 
 from image_utils.image_loader import ImageLoader
 from image_utils.utils import map_value
 
 
 class ImageNoiser:
-    """ """
-
-    corruptions = [
-        # I just eyeballed these to see which ones looked good
-        "gaussian_noise",
-        "gaussian_blur",
-        "jpeg_compression",
-        # "contrast",
-        # "elastic_transform",
-        # "shot_noise",
-        # "impulse_noise",
-        # "defocus_blur",
-        # "glass_blur",
-        # "motion_blur",
-        # "zoom_blur",
-        # "snow",
-        # "frost",
-        # "fog",
-        # "brightness",
-        # "pixelate",
-        # "speckle_noise",
-        # "spatter",
-        # "saturate",
-    ]
 
     @classmethod
     def noise_images(
@@ -45,19 +20,30 @@ class ImageNoiser:
         image_loader: ImageLoader,
         output_folder: str,
         severity_range: tuple[float, float],
-        noise_functions=list[Callable],
+        noise_functions: (
+            Sequence[Callable[[PILImage.Image, float], PILImage.Image]] | None
+        ) = None,
         samples: int | None = None,
     ) -> None:
         """
         Adds noise to images in the specified folder.
 
         Args:
-            image_loader (ImageLoader): The image loader object.
-            output_folder (str): The folder to save the noisy images.
-            severity (float): The severity of the noise.
-            noise_functions (list[Callable]): List of noise functions to apply.
-            samples (int | None): Number of samples to process. If None, process all images.
+            image_loader: your ImageLoader
+            output_folder: where to save
+            severity_range: (min_severity, max_severity)
+            noise_functions: list of callables(image, severity)->image
+            samples: how many images to process
         """
+
+        os.makedirs(output_folder, exist_ok=True)
+
+        assert (
+            severity_range[0] <= severity_range[1]
+        ), "Invalid severity range. Must be min <= max."
+
+        if noise_functions is None:
+            noise_functions = cls.get_noise_functions()
 
         if samples is None:
             samples = len(image_loader.image_paths)
@@ -77,21 +63,12 @@ class ImageNoiser:
 
             unique_id = str(uuid4())
             path = f"{output_folder}/{unique_id}_{image_path.name}_noisy.jpg"
-            noisy_image.save(path, quality=95)
-
-    @classmethod
-    def with_noise(cls, image: PILImage.Image, severity: float = 0.2) -> PILImage.Image:
-        image_to_corrupt = image.copy()
-        image_to_corrupt = cls.add_gaussian_noise(image_to_corrupt, severity)
-        image_to_corrupt = cls.add_jpeg_compression(image_to_corrupt, severity)
-
-        return image_to_corrupt
+            noisy_image.save(path, quality=100)
 
     @classmethod
     def add_gaussian_noise(
         cls, image: PILImage.Image, severity: float
     ) -> PILImage.Image:
-        print(severity)
         sigma = map_value(severity, 0, 1, 0, 0.3)
         image_array = np.array(image).astype(np.float32) / 255.0
         noise = np.random.normal(0, sigma, image_array.shape)
@@ -103,15 +80,18 @@ class ImageNoiser:
     def add_jpeg_compression(
         cls, image: PILImage.Image, severity: float
     ) -> PILImage.Image:
-        quality = int(map_value(severity, 1, 0, 0, 100))
+        quality = int(map_value(severity, 1, 0, 1, 100))
         buffer = BytesIO()
+
         if image.mode != "RGB":
             image = image.convert("RGB")
 
         image.save(buffer, format="JPEG", quality=quality)
         buffer.seek(0)
+        image = PILImage.open(buffer)
+        image.load()
 
-        return PILImage.open(buffer)
+        return image
 
     @classmethod
     def add_gaussian_blur(
@@ -163,7 +143,10 @@ class ImageNoiser:
 
     @classmethod
     def add_all_noises(
-        cls, image: PILImage.Image, severity: float, num_noise_fns: int | None = None
+        cls,
+        image: PILImage.Image,
+        severity: float,
+        num_noise_fns: int | None = None,
     ) -> Tuple[PILImage.Image, Dict[str, float]]:
         """
         Blend multiple noise types into one image, with no leftover original.
@@ -180,8 +163,12 @@ class ImageNoiser:
             ValueError: if severity > num_noise_fns
         """
         # 1. pick noise functions
-        funcs = [getattr(cls, f"add_{name}") for name in cls.corruptions]
-        n = len(funcs) if num_noise_fns is None else min(num_noise_fns, len(funcs))
+        noise_fns = ImageNoiser.get_noise_functions()
+        n = (
+            len(noise_fns)
+            if num_noise_fns is None
+            else min(num_noise_fns, len(noise_fns))
+        )
 
         if severity < 0:
             raise ValueError(f"Severity must be >= 0, got {severity}")
@@ -190,7 +177,7 @@ class ImageNoiser:
                 f"Severity {severity:.3f} exceeds max total {n} " f"(one per noise fn)."
             )
 
-        chosen = sample(funcs, n)
+        chosen = sample(noise_fns, n)
 
         # 2. randomly split the total severity across them
         raw = [random() for _ in range(n)]
@@ -215,6 +202,21 @@ class ImageNoiser:
 
         return blended, applied
 
+    @classmethod
+    def get_noise_functions(
+        cls,
+    ) -> Sequence[Callable[[PILImage.Image, float], PILImage.Image]]:
+        return [
+            cls.add_gaussian_noise,
+            cls.add_jpeg_compression,
+            cls.add_gaussian_blur,
+            cls.add_brightness,
+            cls.add_high_contrast,
+            cls.add_low_contrast,
+            cls.add_saturation,
+            cls.add_pixelate,
+        ]
+
 
 if __name__ == "__main__":
     from pathlib import Path
@@ -225,9 +227,9 @@ if __name__ == "__main__":
 
     # Configuration
     image_dir = Path("/Volumes/Shared/external_ssd/datasets/laion_aesthetics/45/05")
-    severity = 1.5
-    num_noise_fns = 3
-    num_images_to_display = 5
+    SEVERITY = 1.5
+    NUM_NOISE_FNS = 3
+    NUM_IMAGES_TO_DISPLAY = 5
 
     # Load images
     loader = ImageLoader(str(image_dir), shuffle=True)
@@ -235,11 +237,11 @@ if __name__ == "__main__":
 
     # Loop through images and display side-by-side
     for i, img_path in enumerate(loader):
-        if i >= num_images_to_display:
+        if i >= NUM_IMAGES_TO_DISPLAY:
             break
 
         original = img_path.load()
-        blended, weights = ImageNoiser.add_all_noises(original, severity, num_noise_fns)
+        blended, weights = ImageNoiser.add_all_noises(original, SEVERITY, NUM_NOISE_FNS)
 
         # Plot original and noised
         plt.figure(figsize=(12, 5))
@@ -253,7 +255,7 @@ if __name__ == "__main__":
         plt.subplot(1, 2, 2)
         plt.imshow(blended)
         plt.title(
-            f"Noised (severity={severity}, n={num_noise_fns})\n"
+            f"Noised (severity={SEVERITY}, n={NUM_NOISE_FNS})\n"
             + "\n".join(f"{k}: {v:.2f}" for k, v in weights.items())
         )
         plt.axis("off")

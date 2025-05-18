@@ -16,7 +16,9 @@ from image_utils.image_loader import ImageLoader  # Your lazy recursive loader
 class Config:
     source_dir: Path
     output_dir: Path
-    image_transform_fn: Callable[[PILImage.Image, Path], PILImage.Image]
+    image_transform_fn: Callable[
+        [PILImage.Image, Path], tuple[PILImage.Image, Dict[str, float]]
+    ]
     test_size: float = 0.2
     output_csv_name: str = "noisy_labels.csv"
     train_subdir: str = "train"
@@ -63,7 +65,9 @@ class ImageTransformationPipeline:
         self.image_loader.reset()
 
         train_paths, test_paths = train_test_split(
-            image_paths, test_size=self.config.test_size, random_state=42
+            image_paths,
+            test_size=self.config.test_size,
+            random_state=42,
         )
         split_lookup = {str(p): "train" for p in train_paths} | {
             str(p): "test" for p in test_paths
@@ -93,20 +97,19 @@ class ImageTransformationPipeline:
                 continue
 
             transformed_image, noise_weights = self.config.image_transform_fn(image)
-
             print(noise_weights)
 
             transformed_image.save(output_path, quality=100)
             print(f"✅ Saved: {group}/{output_filename}")
 
-            self.records.append(
-                {
-                    "original_image_path": str(img_path),
-                    "noisy_image_path": str(output_path),
-                    "split": group,
-                }
-                | {name: str(weight) for name, weight in noise_weights.items()}
-            )
+            record = {
+                "original_image_path": str(img_path),
+                "noisy_image_path": str(output_path),
+                "split": group,
+            } | {name: str(weight) for name, weight in noise_weights.items()}
+
+            print(f"📝 Record: {record}")
+            self.records.append(record)
 
         self._write_csv()
 
@@ -128,10 +131,8 @@ if __name__ == "__main__":
     add_noises_partial = partial(maker.add_all_noises, severity=1.2, num_noise_fns=3)
 
     config = Config(
-        source_dir=Path(
-            "/Volumes/Shared/external_ssd/datasets/laion_aesthetics/-1/10/"
-        ),
-        output_dir=Path("./training_data/output_noisy_dataset"),
+        source_dir=Path("/mnt/storage/external_ssd/datasets/laion_aesthetics/-1/10/"),
+        output_dir=Path("/mnt/datadrive_m2/ml_training_data/aiqa"),
         # WILO: Make `add_all_noises` a callable that takes an image and a path
         image_transform_fn=add_noises_partial,
     )

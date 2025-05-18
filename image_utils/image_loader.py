@@ -6,6 +6,8 @@ from PIL import Image as PILImage, ImageFile
 import random
 import os
 
+from image_utils.utils import coerce_to_paths
+
 from .image_path import ImagePath
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -14,18 +16,39 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class ImageLoader:
     def __init__(
         self,
-        input_folder: str,
+        input_folders: List[Path] | List[str] | Path | str,
         extensions: Optional[List[str]] = None,
         shuffle: Optional[bool] = False,
     ):
-        self.input_folder = input_folder
+        self.input_folders = self._setup_input_folders(input_folders)
         self.shuffle = shuffle
         if extensions:
             self.extensions = [ext.lower() for ext in extensions]
         else:
             self.extensions = [".jpg", ".jpeg", ".png"]
 
-        self._setup(input_folder)
+        self._setup(self.input_folders)
+
+    def _setup_input_folders(
+        self, input_folder: List[Path] | List[str] | Path | str
+    ) -> List[Path]:
+        input_folders = []
+        if isinstance(input_folder, str):
+            input_folders = [Path(input_folder)]
+        elif isinstance(input_folder, Path):
+            input_folders = [input_folder]
+        elif isinstance(input_folder, list):
+            for folder in input_folder:
+                if isinstance(folder, str):
+                    input_folders.append(Path(folder))
+                elif isinstance(folder, Path):
+                    input_folders.append(folder)
+                else:
+                    raise ValueError("Input folder must be a string or a Path object.")
+        else:
+            raise ValueError("Input folder must be a string or a Path object.")
+
+        return input_folders
 
     def __iter__(self):
         """Return self as an iterator."""
@@ -76,7 +99,7 @@ class ImageLoader:
 
     def reset(self):
         """Reset the iterator to the beginning."""
-        self._setup(self.input_folder)
+        self._setup(self.input_folders)
 
     def paths_with_image_extension(self, raw_image_paths: List[Path]) -> List[Path]:
         """Filter paths to include only those with valid image extensions."""
@@ -89,16 +112,19 @@ class ImageLoader:
 
         if not image_paths:
             raise Exception(
-                f"No files found in '{self.input_folder}' with extensions {self.extensions}."
+                f"No files found in '{self.input_folders}' with extensions {self.extensions}."
             )
 
         return image_paths
 
-    def discover_image_paths(self, input_folder: str) -> List[Path]:
+    def discover_image_paths(
+        self, input_folder: str | Path | List[str] | List[Path]
+    ) -> List[Path]:
         """Discover all image paths in the input folder."""
+        input_folder = coerce_to_paths(input_folder)
         raw_image_paths = list(Path(input_folder).rglob("*", case_sensitive=False))
         if not raw_image_paths:
-            raise Exception(f"No files found in '{self.input_folder}'.")
+            raise Exception(f"No files found in '{self.input_folders}'.")
 
         image_paths = self.paths_with_image_extension(raw_image_paths)
 

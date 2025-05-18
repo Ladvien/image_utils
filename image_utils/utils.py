@@ -1,5 +1,6 @@
 import base64
 from io import BytesIO
+from pathlib import Path
 from PIL import Image as PILImage
 import torch
 import torchvision.transforms.functional as tf
@@ -37,3 +38,16 @@ def load_image_as_base64(image: PILImage.Image) -> str:
     img_str = base64.b64encode(buffered.getvalue())
 
     return img_str.decode("utf-8")
+
+
+def coerce_to_paths(input_folder: str | Path | list[str] | list[Path]) -> list[Path]:
+    if isinstance(input_folder, str):
+        input_folder = Path(input_folder)
+    elif isinstance(input_folder, Path):
+        input_folder = [input_folder]
+    elif isinstance(input_folder, list):
+        input_folder = [Path(folder) for folder in input_folder]
+    else:
+        raise ValueError("Input folder must be a string or a Path object.")
+
+    return input_folder

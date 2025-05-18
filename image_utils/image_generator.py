@@ -5,8 +5,9 @@ from typing import Callable, List, Dict, Optional
 from uuid import uuid4
 from PIL import Image as PILImage
 from image_utils.image_noiser import ImageNoiser
+from image_utils.utils import coerce_to_paths
 import pandas as pd
-import random
+import os
 from sklearn.model_selection import train_test_split
 
 from image_utils.image_loader import ImageLoader  # Your lazy recursive loader
@@ -14,7 +15,7 @@ from image_utils.image_loader import ImageLoader  # Your lazy recursive loader
 
 @dataclass
 class Config:
-    source_dir: Path
+    source_dir: List[Path] | Path
     output_dir: Path
     image_transform_fn: Callable[
         [PILImage.Image, Path], tuple[PILImage.Image, Dict[str, float]]
@@ -36,6 +37,20 @@ class Config:
 
     def output_csv_path(self) -> Path:
         return self.output_dir / self.output_csv_name
+
+    def __post_init__(self):
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.source_dir = coerce_to_paths(self.source_dir)
+        if not self.output_dir.exists():
+            raise ValueError(f"Output directory does not exist: {self.output_dir}")
+        if not self.image_extensions:
+            raise ValueError("No image extensions provided.")
+        if self.test_size <= 0 or self.test_size >= 1:
+            raise ValueError("test_size must be between 0 and 1.")
+        if not callable(self.image_transform_fn):
+            raise ValueError("image_transform_fn must be a callable.")
+        if not isinstance(self.shuffle, bool):
+            raise ValueError("shuffle must be a boolean.")
 
 
 class ImageTransformationPipeline:
@@ -59,7 +74,8 @@ class ImageTransformationPipeline:
         )
 
     def run(self):
-        assert len(self.image_loader) > 0, "No images found."
+        if len(self.image_loader) < 2:
+            raise ValueError("Not enough images to split into train and test sets.")
 
         image_paths = [p.path for p in self.image_loader]
         self.image_loader.reset()
@@ -123,10 +139,12 @@ if __name__ == "__main__":
 
     maker = ImageNoiser()
 
-    add_noises_partial = partial(maker.add_all_noises, severity=1.2, num_noise_fns=3)
+    add_noises_partial = partial(
+        maker.add_all_noises, severity_budget=1.2, num_noise_fns=3
+    )
 
     config = Config(
-        source_dir=Path("/mnt/storage/external_ssd/datasets/laion_aesthetics/-1/10/"),
+        source_dir=Path("/mnt/storage/external_ssd/datasets/laion_aesthetics/50/"),
         output_dir=Path("/mnt/datadrive_m2/ml_training_data/aiqa"),
         # WILO: Make `add_all_noises` a callable that takes an image and a path
         image_transform_fn=add_noises_partial,
